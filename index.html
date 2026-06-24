@@ -409,17 +409,6 @@
         console.error('Error:', e);
       }
     }
-        const dateObj = new Date(data.dateTime);
-        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const dateStr = dateObj.toLocaleDateString('es-ES', dateOptions);
-
-        els.time.textContent = `${hour.toString().padStart(2, '0')}:${minute}`;
-        els.period.textContent = `:${second} ${hour < 12 ? 'AM' : 'PM'}`;
-        els.date.textContent = dateStr;
-      } catch (e) {
-        console.error('Error:', e);
-      }
-    }
 
     document.getElementById('selector').addEventListener('click', (e) => {
       if (e.target.tagName === 'BUTTON') setActiveCity(e.target.dataset.city);
