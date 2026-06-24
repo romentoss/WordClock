@@ -233,7 +233,7 @@
   </div>
 
   <div class="footer">
-    Powered by <span>WorldTimeAPI</span> + <span>Temporal API</span>
+    Powered by <span>timeapi.io</span> + <span>Temporal API</span>
   </div>
 
   <!-- Temporal API vs Date -->
@@ -244,12 +244,10 @@
       <div class="code-block"><span class="comment">// API timeapi.io - devuelve en JSON:</span>
 {
   <span class="property">"timeZone"</span>: <span class="string">"Europe/Madrid"</span>,
-  <span class="property">"time"</span>: <span class="string">"17:30:00"</span>,
-  <span class="property">"dateTime"</span>: <span class="string">"2024-06-24 17:30:00"</span>,
-  <span class="property">"date"</span>: <span class="string">"06/24/2024"</span>,
-  <span class="property">"abbreviation"</span>: <span class="string">"CEST"</span>,
-  <span class="property">"utcOffset"</span>: <span class="string">"02:00"</span>,
-  ...
+  <span class="property">"currentLocalTime"</span>: <span class="string">"2026-06-24T19:56:20.847631"</span>,
+  <span class="property">"currentUtcOffset"</span>: { <span class="property">"seconds"</span>: <span class="number">7200</span> },
+  <span class="property">"isDayLightSavingActive"</span>: <span class="number">true</span>,
+  <span class="property">"dstOffsetToUtc"</span>: { <span class="property">"seconds"</span>: <span class="number">7200</span> }
 }</div>
 
       <table class="diff-table">
@@ -395,13 +393,25 @@
         const res = await fetch(`https://timeapi.io/api/TimeZone/zone?timeZone=${currentCity.timezone}`);
         const data = await res.json();
 
-        // Parse time: "17:30:00"
-        const timeParts = data.time.split(':');
+        // Parse currentLocalTime: "2026-06-24T19:56:20.847631"
+        const datetime = data.currentLocalTime;
+        const timeParts = datetime.substring(11, 19).split(':');
         const hour = parseInt(timeParts[0]);
         const minute = timeParts[1];
         const second = timeParts[2];
 
-        // Format date
+        // Format date from datetime string
+        const dateObj = new Date(datetime);
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateStr = dateObj.toLocaleDateString('es-ES', dateOptions);
+
+        els.time.textContent = `${hour.toString().padStart(2, '0')}:${minute}`;
+        els.period.textContent = `:${second} ${hour < 12 ? 'AM' : 'PM'}`;
+        els.date.textContent = dateStr;
+      } catch (e) {
+        console.error('Error:', e);
+      }
+    }
         const dateObj = new Date(data.dateTime);
         const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         const dateStr = dateObj.toLocaleDateString('es-ES', dateOptions);
