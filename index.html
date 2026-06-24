@@ -170,7 +170,6 @@
       border-collapse: collapse;
       margin-top: 1rem;
       font-size: 0.9rem;
-      min-width: 500px;
     }
     .diff-table th {
       text-align: left;
@@ -211,7 +210,8 @@
       }
       .info-box h2 { font-size: 1rem; }
       .diff-table { font-size: 0.8rem; }
-      .diff-table th, .diff-table td { padding: 0.5rem; }
+      .diff-table th, .diff-table td { padding: 0.5rem; display: block; width: 100%; }
+      .diff-table tr { display: block; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
     }
   </style>
 </head>
