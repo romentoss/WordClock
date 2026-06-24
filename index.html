@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World Clock - Temporal API</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      color: #fff;
+    }
+    h1 { margin-bottom: 1rem; font-size: 1.8rem; }
+    .container {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .map-container {
+      position: relative;
+      width: 640px;
+      height: 320px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(50,100,150,0.3);
+      background: #0d3a5a;
+    }
+    .world-map {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .city-dot {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #ffcc00;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid #fff;
+      box-shadow: 0 0 10px rgba(255,204,0,0.7);
+      z-index: 10;
+    }
+    .city-dot:hover {
+      background: #70ffaf;
+      box-shadow: 0 0 25px #70ffaf;
+      transform: translate(-50%, -50%) scale(1.4);
+    }
+    .city-dot.active {
+      background: #70ffaf;
+      border-color: #fff;
+      box-shadow: 0 0 30px #70ffaf;
+      transform: translate(-50%, -50%) scale(1.3);
+    }
+    .city-label {
+      position: absolute;
+      font-size: 0.7rem;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      background: rgba(0,0,0,0.7);
+      padding: 2px 6px;
+      border-radius: 4px;
+      z-index: 11;
+    }
+    .city-dot:hover + .city-label,
+    .city-dot.active + .city-label {
+      opacity: 1;
+    }
+    .time-display {
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      padding: 2rem;
+      min-width: 280px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .region-name { font-size: 1.3rem; color: #70ffaf; margin-bottom: 0.5rem; }
+    .country-name { color: #888; margin-bottom: 1.5rem; }
+    .time {
+      font-size: 4rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 30px rgba(112,255,175,0.3);
+    }
+    .period { font-size: 1.5rem; color: #70ffaf; }
+    .date { margin-top: 1rem; color: #888; font-size: 1rem; }
+    .timezone { margin-top: 0.5rem; font-family: monospace; font-size: 0.85rem; color: #666; }
+    .selector {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .selector button {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.85rem;
+    }
+    .selector button:hover { background: rgba(112,255,175,0.2); border-color: #70ffaf; }
+    .selector button.active { background: #70ffaf; color: #1a1a2e; border-color: #70ffaf; }
+    .footer { margin-top: 2rem; color: #666; font-size: 0.8rem; }
+    .footer span { background: #70ffaf; color: #1a1a2e; padding: 0.2rem 0.5rem; border-radius: 4px; margin: 0 0.25rem; }
+
+    .info-section {
+      max-width: 900px;
+      margin-top: 2rem;
+      width: 100%;
+    }
+    .info-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .info-box h2 {
+      font-size: 1.2rem;
+      color: #70ffaf;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .info-box h2 .badge {
+      font-size: 0.75rem;
+      background: rgba(112,255,175,0.2);
+      padding: 0.2rem 0.6rem;
+      border-radius: 10px;
+      color: #70ffaf;
+    }
+    .code-block {
+      background: rgba(0,0,0,0.4);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.5;
+      margin: 1rem 0;
+    }
+    .code-block .comment { color: #6a9955; }
+    .code-block .keyword { color: #569cd6; }
+    .code-block .string { color: #ce9178; }
+    .code-block .number { color: #b5cea8; }
+    .code-block .property { color: #9cdcfe; }
+    .code-block .function { color: #dcdcaa; }
+    .diff-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    .diff-table th {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      color: #888;
+    }
+    .diff-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .diff-table .old {
+      color: #f48771;
+    }
+    .diff-table .new {
+      color: #70ffaf;
+    }
+    .vs { color: #888; font-size: 0.8rem; margin: 0 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>🌍 World Clock</h1>
+
+  <div class="container">
+    <div class="map-container">
+      <img class="world-map" src="mundosvg.svg" alt="World Map">
+
+      <!-- City dots - positions corrected by user -->
+      <!-- New York: top: 24%; left: 23.5% -->
+      <div class="city-dot" data-city="New York" style="top: 24%; left: 23.5%;" title="New York"></div>
+      <div class="city-label" style="top: 19%; left: 23.5%;">New York</div>
+
+      <!-- São Paulo: top: 74.5%; left: 30.9% -->
+      <div class="city-dot" data-city="São Paulo" style="top: 74.5%; left: 30.9%;" title="São Paulo"></div>
+      <div class="city-label" style="top: 79.5%; left: 30.9%;">São Paulo</div>
+
+      <!-- Londres: top: 20.2%; left: 45.5% -->
+      <div class="city-dot" data-city="Londres" style="top: 20.2%; left: 45.5%;" title="Londres"></div>
+      <div class="city-label" style="top: 15.2%; left: 45.5%;">Londres</div>
+
+      <!-- Madrid: top: 28.3%; left: 43.9% -->
+      <div class="city-dot" data-city="Madrid" style="top: 28.3%; left: 43.9%;" title="Madrid"></div>
+      <div class="city-label" style="top: 23.3%; left: 43.9%;">Madrid</div>
+
+      <!-- Tokio: top: 49.9%; left: 85.8% -->
+      <div class="city-dot" data-city="Tokio" style="top: 49.9%; left: 85.8%;" title="Tokio"></div>
+      <div class="city-label" style="top: 54.9%; left: 85.8%;">Tokio</div>
+
+      <!-- Sydney: top: 81.8%; left: 92.3% -->
+      <div class="city-dot" data-city="Sydney" style="top: 81.8%; left: 92.3%;" title="Sydney"></div>
+      <div class="city-label" style="top: 86.8%; left: 92.3%;">Sydney</div>
+    </div>
+
+    <div class="time-display">
+      <div class="region-name" id="regionName">Madrid</div>
+      <div class="country-name" id="countryName">España</div>
+      <div class="time" id="time">00:00</div>
+      <div class="period" id="period">:00</div>
+      <div class="date" id="date">Cargando...</div>
+      <div class="timezone" id="timezone">Europe/Madrid</div>
+      <div class="selector" id="selector"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Powered by <span>WorldTimeAPI</span> + <span>Temporal API</span>
+  </div>
+
+  <!-- Temporal API vs Date -->
+  <div class="info-section">
+    <div class="info-box">
+      <h2>Temporal API <span class="vs">vs</span> Date <span class="badge">JavaScript</span> <span style="font-size:0.7rem;color:#888;">(Stage 3 Proposal - No es estándar aún)</span></h2>
+
+      <div class="code-block"><span class="comment">// API timeapi.io - devuelve en JSON:</span>
+{
+  <span class="property">"timeZone"</span>: <span class="string">"Europe/Madrid"</span>,
+  <span class="property">"time"</span>: <span class="string">"17:30:00"</span>,
+  <span class="property">"dateTime"</span>: <span class="string">"2024-06-24 17:30:00"</span>,
+  <span class="property">"date"</span>: <span class="string">"06/24/2024"</span>,
+  <span class="property">"abbreviation"</span>: <span class="string">"CEST"</span>,
+  <span class="property">"utcOffset"</span>: <span class="string">"02:00"</span>,
+  ...
+}</div>
+
+      <table class="diff-table">
+        <tr>
+          <th>Característica</th>
+          <th class="old">Date (❌ Problemático)</th>
+          <th class="new">Temporal (✅ Propuesta TC39 Stage 3)</th>
+        </tr>
+        <tr>
+          <td>Inmutable</td>
+          <td class="old">❌ Mutable: fecha.setDate() modifica el original</td>
+          <td class="new">✅ Inmutable: fecha.add({days:1}) retorna nuevo objeto</td>
+        </tr>
+        <tr>
+          <td>Zonas horarias</td>
+          <td class="old">❌ Solo UTC, manejo manual de offset</td>
+          <td class="new">✅ IANA built-in: withTimeZone("Asia/Tokyo")</td>
+        </tr>
+        <tr>
+          <td>Cálculos</td>
+          <td class="old">❌ Milisegundos desde epoch</td>
+          <td class="new">✅ Precisión en cálculos, almacenamiento en ms</td>
+        </tr>
+        <tr>
+          <td>API</td>
+          <td class="old">❌ Confusa: getDate(),getDay(),getUTCDate()...</td>
+          <td class="new">✅ Clara: .day, .month, .year separados</td>
+        </tr>
+        <tr>
+          <td>Tipos de fecha</td>
+          <td class="old">❌ Solo Date (mezcla date+time+timezone)</td>
+          <td class="new">✅ PlainDate, PlainTime, PlainDateTime, ZonedDateTime, Instant</td>
+        </tr>
+        <tr>
+          <td>Duraciones</td>
+          <td class="old">❌ Matemáticas con timestamps</td>
+          <td class="new">✅ Temporal.Duration con .hours, .minutes...</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Node vs Deno -->
+    <div class="info-box">
+      <h2>Node.js <span class="vs">vs</span> Deno <span class="badge">Runtime</span></h2>
+
+      <table class="diff-table">
+        <tr>
+          <th>Característica</th>
+          <th class="old">Node.js</th>
+          <th class="new">Deno</th>
+        </tr>
+        <tr>
+          <td>TypeScript</td>
+          <td class="old">⚠️ Necesita build (tsc) o herramientas como ts-node</td>
+          <td class="new">✅ Nativo: corre .ts directamente, zero-config</td>
+        </tr>
+        <tr>
+          <td>Dependencies</td>
+          <td class="old">package.json + npm/pnpm/yarn install</td>
+          <td class="new">✅ Importas de URLs (esm.sh, jsr, npm:)</td>
+        </tr>
+        <tr>
+          <td>Permisos</td>
+          <td class="old">⚠️ Acceso total por defecto al sistema</td>
+          <td class="new">✅ Sandboxed: --allow-net, --allow-read, --allow-env</td>
+        </tr>
+        <tr>
+          <td>ES Modules</td>
+          <td class="old">⚠️ Soporta ESM y CommonJS, puede ser confuso</td>
+          <td class="new">✅ Solo ES Modules nativos</td>
+        </tr>
+        <tr>
+          <td>Tooling</td>
+          <td class="old">⚠️ Necesitas npm install -g para CLI tools</td>
+          <td class="new">✅ Built-in: deno test, fmt, lint, compile</td>
+        </tr>
+        <tr>
+          <td>Web APIs</td>
+          <td class="old">⚠️ fetch disponible pero no todas las APIs web</td>
+          <td class="new">✅ fetch, WebSocket, Workers, Streams estándar</td>
+        </tr>
+        <tr>
+          <td>npm compatibility</td>
+          <td class="old">✅ Nativo</td>
+          <td class="new">✅ Deno 2.x tiene first-class npm compatibility</td>
+        </tr>
+      </table>
+
+      <div class="code-block"><span class="comment">// Backend Deno + Temporal API (demo original)</span>
+<span class="keyword">import</span> { Temporal } <span class="keyword">from</span> <span class="string">"https://esm.sh/@js-temporal/polyfill"</span>;
+
+<span class="keyword">const</span> ahora = Temporal.Now.zonedDateTimeISO(<span class="string">"Europe/Madrid"</span>);
+<span class="keyword">const</span> manana = ahora.add({ days: <span class="number">1</span> });
+
+<span class="comment">// Frontend: fetch a WorldTimeAPI para部署 en GitHub Pages</span>
+<span class="comment">// http://worldtimeapi.org/api/timezone/Europe/Madrid</span></div>
+    </div>
+  </div>
+
+  <script type="module">
+    const CITIES = [
+      { city: "Madrid", country: "España", timezone: "Europe/Madrid" },
+      { city: "New York", country: "EE.UU.", timezone: "America/New_York" },
+      { city: "Londres", country: "Reino Unido", timezone: "Europe/London" },
+      { city: "Tokio", country: "Japón", timezone: "Asia/Tokyo" },
+      { city: "Sydney", country: "Australia", timezone: "Australia/Sydney" },
+      { city: "São Paulo", country: "Brasil", timezone: "America/Sao_Paulo" },
+    ];
+
+    let currentCity = CITIES[0];
+
+    const els = {
+      regionName: document.getElementById('regionName'),
+      countryName: document.getElementById('countryName'),
+      time: document.getElementById('time'),
+      period: document.getElementById('period'),
+      date: document.getElementById('date'),
+      timezone: document.getElementById('timezone'),
+      selector: document.getElementById('selector'),
+    };
+
+    function buildSelector() {
+      els.selector.innerHTML = CITIES.map(c => `
+        <button data-city="${c.city}">${c.city}</button>
+      `).join('');
+    }
+
+    function setActiveCity(city) {
+      currentCity = CITIES.find(c => c.city === city) || CITIES[0];
+      document.querySelectorAll('.city-dot').forEach(dot => {
+        dot.classList.toggle('active', dot.dataset.city === currentCity.city);
+      });
+      document.querySelectorAll('.selector button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.city === currentCity.city);
+      });
+      els.regionName.textContent = currentCity.city;
+      els.countryName.textContent = currentCity.country;
+      els.timezone.textContent = currentCity.timezone;
+    }
+
+    async function fetchTime() {
+      try {
+        const res = await fetch(`https://timeapi.io/api/TimeZone/zone?timeZone=${currentCity.timezone}`);
+        const data = await res.json();
+
+        // Parse time: "17:30:00"
+        const timeParts = data.time.split(':');
+        const hour = parseInt(timeParts[0]);
+        const minute = timeParts[1];
+        const second = timeParts[2];
+
+        // Format date
+        const dateObj = new Date(data.dateTime);
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateStr = dateObj.toLocaleDateString('es-ES', dateOptions);
+
+        els.time.textContent = `${hour.toString().padStart(2, '0')}:${minute}`;
+        els.period.textContent = `:${second} ${hour < 12 ? 'AM' : 'PM'}`;
+        els.date.textContent = dateStr;
+      } catch (e) {
+        console.error('Error:', e);
+      }
+    }
+
+    document.getElementById('selector').addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') setActiveCity(e.target.dataset.city);
+    });
+
+    document.querySelector('.map-container').addEventListener('click', (e) => {
+      if (e.target.classList.contains('city-dot')) setActiveCity(e.target.dataset.city);
+    });
+
+    buildSelector();
+    setActiveCity('Madrid');
+    fetchTime();
+    setInterval(fetchTime, 1000);
+  </script>
+</body>
+</html>

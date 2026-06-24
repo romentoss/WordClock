@@ -1,0 +1,21 @@
+# Deno
+.deno/
+deno.lock
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# CLAUDE.md (project documentation - not needed in repo)
+# CLAUDE.md
