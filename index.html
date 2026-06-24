@@ -233,7 +233,7 @@
   </div>
 
   <div class="footer">
-    Powered by <span>timeapi.io</span> + <span>Temporal API</span>
+    Powered by <span>Deno</span> + <span>Temporal API</span>
   </div>
 
   <!-- Temporal API vs Date -->
@@ -241,13 +241,20 @@
     <div class="info-box">
       <h2>Temporal API <span class="vs">vs</span> Date <span class="badge">JavaScript</span> <span style="font-size:0.7rem;color:#888;">(Stage 3 Proposal - No es estándar aún)</span></h2>
 
-      <div class="code-block"><span class="comment">// API timeapi.io - devuelve en JSON:</span>
+      <div class="code-block"><span class="comment">// Backend Deno + Temporal API - devuelve JSON:</span>
 {
-  <span class="property">"timeZone"</span>: <span class="string">"Europe/Madrid"</span>,
-  <span class="property">"currentLocalTime"</span>: <span class="string">"2026-06-24T19:56:20.847631"</span>,
-  <span class="property">"currentUtcOffset"</span>: { <span class="property">"seconds"</span>: <span class="number">7200</span> },
-  <span class="property">"isDayLightSavingActive"</span>: <span class="number">true</span>,
-  <span class="property">"dstOffsetToUtc"</span>: { <span class="property">"seconds"</span>: <span class="number">7200</span> }
+  <span class="property">"times"</span>: [
+    {
+      <span class="property">"city"</span>: <span class="string">"Madrid"</span>,
+      <span class="property">"country"</span>: <span class="string">"España"</span>,
+      <span class="property">"timezone"</span>: <span class="string">"Europe/Madrid"</span>,
+      <span class="property">"hour"</span>: <span class="number">19</span>,
+      <span class="property">"minute"</span>: <span class="string">"56"</span>,
+      <span class="property">"second"</span>: <span class="string">"22"</span>,
+      <span class="property">"dayPeriod"</span>: <span class="string">"PM"</span>,
+      <span class="property">"date"</span>: <span class="string">"miércoles, 24 de junio de 2026"</span>
+    }
+  ]
 }</div>
 
       <table class="diff-table">
@@ -336,14 +343,14 @@
         </tr>
       </table>
 
-      <div class="code-block"><span class="comment">// Backend Deno + Temporal API (demo original)</span>
-<span class="keyword">import</span> { Temporal } <span class="keyword">from</span> <span class="string">"https://esm.sh/@js-temporal/polyfill"</span>;
+      <div class="code-block"><span class="comment">// Backend Deno + Temporal API</span>
+<span class="keyword">import</span> { Temporal } <span class="keyword">from</span> <span class="string">"@js-temporal/polyfill"</span>;
 
 <span class="keyword">const</span> ahora = Temporal.Now.zonedDateTimeISO(<span class="string">"Europe/Madrid"</span>);
 <span class="keyword">const</span> manana = ahora.add({ days: <span class="number">1</span> });
 
-<span class="comment">// Frontend: fetch a WorldTimeAPI para部署 en GitHub Pages</span>
-<span class="comment">// http://worldtimeapi.org/api/timezone/Europe/Madrid</span></div>
+<span class="comment">// Desplegado en Deno Deploy (serverless)</span>
+<span class="comment">// El frontend hace fetch('/api/time') y recibe JSON</span></div>
     </div>
   </div>
 
@@ -390,24 +397,14 @@
 
     async function fetchTime() {
       try {
-        const res = await fetch(`https://timeapi.io/api/TimeZone/zone?timeZone=${currentCity.timezone}`);
+        const res = await fetch('/api/time');
         const data = await res.json();
-
-        // Parse currentLocalTime: "2026-06-24T19:56:20.847631"
-        const datetime = data.currentLocalTime;
-        const timeParts = datetime.substring(11, 19).split(':');
-        const hour = parseInt(timeParts[0]);
-        const minute = timeParts[1];
-        const second = timeParts[2];
-
-        // Format date from datetime string
-        const dateObj = new Date(datetime);
-        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        const dateStr = dateObj.toLocaleDateString('es-ES', dateOptions);
-
-        els.time.textContent = `${hour.toString().padStart(2, '0')}:${minute}`;
-        els.period.textContent = `:${second} ${hour < 12 ? 'AM' : 'PM'}`;
-        els.date.textContent = dateStr;
+        const cityData = data.times.find(t => t.city === currentCity.city);
+        if (cityData) {
+          els.time.textContent = `${cityData.hour.toString().padStart(2, '0')}:${cityData.minute}`;
+          els.period.textContent = `:${cityData.second} ${cityData.dayPeriod}`;
+          els.date.textContent = cityData.date;
+        }
       } catch (e) {
         console.error('Error:', e);
       }
